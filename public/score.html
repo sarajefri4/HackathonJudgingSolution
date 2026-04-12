@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Score Teams — Datathon 2025</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .teams-bar {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .teams-bar::-webkit-scrollbar { display: none; }
+    .teams-scroll {
+      display: flex;
+      gap: 6px;
+      width: max-content;
+    }
+    .team-btn {
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      min-height: 44px;
+      display: flex; align-items: center; gap: 6px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .team-btn.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0a1e15;
+      font-weight: 700;
+    }
+    .team-btn.scored {
+      border-color: rgba(61,207,160,0.4);
+      color: var(--accent);
+    }
+    .team-btn.scored::after {
+      content: '✓';
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+    .team-btn.active.scored::after { color: #0a1e15; }
+    .team-btn:not(.active):hover { border-color: var(--border-mid); background: var(--bg-elevated); color: var(--text); }
+
+    .score-page {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    .score-content {
+      flex: 1;
+      padding: 20px 16px 120px;
+      max-width: 680px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .team-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .team-heading h2 { font-size: 1.6rem; }
+
+    /* Submit bar - fixed at bottom */
+    .submit-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .total-inline {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .total-inline-label { font-size: 0.75rem; color: var(--text-muted); }
+    .total-inline-num {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .total-inline-max { font-size: 0.75rem; color: var(--text-dim); }
+
+    .notes-section { margin-top: 18px; }
+    .notes-section label { display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 6px; }
+
+    /* All scored state */
+    .all-scored-banner {
+      background: var(--accent-glow);
+      border: 1.5px solid rgba(61,207,160,0.35);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .all-scored-banner h3 { color: var(--accent); font-size: 1.2rem; margin-bottom: 6px; }
+    .all-scored-banner p { color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="score-page" id="score-page">
+    <!-- Header -->
+    <header class="score-header" role="banner">
+      <div class="score-header-left">
+        <h1 id="header-title">Scoring</h1>
+        <p id="header-sub"></p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="progress-pill" class="badge badge-muted"></span>
+        <button class="btn btn-ghost btn-sm" id="logout-btn" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <!-- Teams Tab Bar -->
+    <div class="teams-bar" id="teams-bar" role="navigation" aria-label="Team tabs">
+      <div class="teams-scroll" id="teams-scroll"></div>
+    </div>
+
+    <!-- Scoring Content -->
+    <div class="score-content" id="score-content" role="main">
+      <div id="loading-state" class="flex-center" style="min-height:200px;">
+        <div class="spinner" aria-label="Loading"></div>
+      </div>
+      <div id="team-panel" class="hidden"></div>
+    </div>
+
+    <!-- Submit Bar -->
+    <div class="submit-bar" id="submit-bar">
+      <div class="total-inline">
+        <span class="total-inline-label">Weighted Total</span>
+        <span class="total-inline-num" id="total-display">0.0</span>
+        <span class="total-inline-max">/ 100</span>
+      </div>
+      <button class="btn btn-primary btn-lg" id="submit-btn" type="button" style="min-width:140px;">
+        Submit Score
+      </button>
+    </div>
+  </div>
+
+  <div id="toast-container" role="region" aria-live="polite"></div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/score.js"></script>
+</body>
+</html>

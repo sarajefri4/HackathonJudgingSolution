@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Dashboard — Datathon 2025</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .dash-header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .dash-body { padding: 28px 0 60px; }
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    .export-btn-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- PIN Modal -->
+  <div id="pin-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dash-modal-title">
+    <div class="modal">
+      <div style="font-size:2.5rem;margin-bottom:16px;" aria-hidden="true">🔒</div>
+      <h2 id="dash-modal-title">Admin Access</h2>
+      <p>Enter the master PIN to view the dashboard</p>
+      <form id="pin-form" novalidate>
+        <div class="form-group" style="display:flex;justify-content:center;margin-bottom:20px;">
+          <input
+            type="password"
+            inputmode="numeric"
+            id="admin-pin"
+            class="input input-pin"
+            placeholder="••••"
+            maxlength="10"
+            autocomplete="off"
+            aria-label="Admin PIN"
+            required
+          >
+        </div>
+        <p id="pin-error" class="text-danger text-sm mb-16 hidden" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-full btn-lg">Unlock</button>
+        <div class="mt-16">
+          <a href="/" class="text-muted text-sm">← Back to home</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard UI -->
+  <div id="dash-ui" class="hidden">
+    <header class="dash-header">
+      <div class="container">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+          <div>
+            <h1 style="font-size:1.4rem;">Admin Dashboard</h1>
+            <div class="refresh-bar mt-8">
+              <div class="refresh-dot" id="refresh-dot"></div>
+              <span id="refresh-text">Loading…</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" id="refresh-btn" type="button">↻ Refresh</button>
+            <button class="btn btn-secondary btn-sm" id="export-btn" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export CSV
+            </button>
+            <a href="/admin-setup" class="btn btn-ghost btn-sm">Setup</a>
+            <a href="/" class="btn btn-ghost btn-sm">← Home</a>
+          </div>
+        </div>
+        <!-- Day Tabs -->
+        <div class="tab-bar mt-16" id="day-tabs" role="tablist" aria-label="Select day"></div>
+      </div>
+    </header>
+
+    <div class="container dash-body">
+      <!-- Stats Row -->
+      <div class="stat-row" id="stat-row"></div>
+
+      <!-- Leaderboard -->
+      <div class="section-header">
+        <h2 class="section-title">Leaderboard</h2>
+        <span class="badge badge-muted" id="lb-badge">ranked by average score</span>
+      </div>
+      <div class="leaderboard mb-24" id="leaderboard"></div>
+
+      <hr class="divider">
+
+      <!-- Score Grid -->
+      <div class="section-header mb-16">
+        <h2 class="section-title">Score Grid</h2>
+        <span class="text-sm text-muted" id="grid-legend">All judges × all teams</span>
+      </div>
+      <div class="table-wrap mb-24">
+        <table class="score-table" id="score-grid" aria-label="Score grid"></table>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" role="region" aria-live="polite"></div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/admin-dashboard.js"></script>
+</body>
+</html>

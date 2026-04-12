@@ -1,0 +1,5 @@
+node_modules/
+.env
+data/judging.db
+data/judging.db-wal
+data/judging.db-shm

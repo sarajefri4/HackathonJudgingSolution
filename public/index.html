@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Datathon 2025 — Judging</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    /* Subtle background pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(61,207,160,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .landing { position: relative; z-index: 1; }
+  </style>
+</head>
+<body>
+  <main class="landing">
+    <div class="landing-logo" aria-hidden="true">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M18 4L32 28H4L18 4Z" stroke="#3dcfa0" stroke-width="2" stroke-linejoin="round" fill="rgba(61,207,160,0.15)"/>
+        <circle cx="18" cy="22" r="3" fill="#3dcfa0"/>
+      </svg>
+    </div>
+
+    <h1>Datathon <span>2025</span></h1>
+    <p class="landing-sub">Judging portal — score teams and track live results</p>
+
+    <div class="entry-cards" role="navigation" aria-label="Entry points">
+      <a href="/judge-login" class="entry-card" aria-label="Judge login">
+        <div class="entry-card-icon" aria-hidden="true">🎯</div>
+        <div class="entry-card-label">I'm a Judge</div>
+        <div class="entry-card-desc">Score teams and submit your evaluations</div>
+      </a>
+      <a href="/admin-setup" class="entry-card" aria-label="Admin area">
+        <div class="entry-card-icon" aria-hidden="true">⚙️</div>
+        <div class="entry-card-label">Admin</div>
+        <div class="entry-card-desc">Setup teams, judges and view results</div>
+      </a>
+    </div>
+  </main>
+
+  <div id="toast-container" role="region" aria-live="polite" aria-label="Notifications"></div>
+</body>
+</html>

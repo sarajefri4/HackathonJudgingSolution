@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Admin Setup — Datathon 2025</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .setup-body { padding: 24px 0 60px; }
+    .subsection-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+    .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+    .pin-field-wrap { display: flex; align-items: center; gap: 6px; }
+    .pin-field-wrap .toggle-pin {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 6px; min-height: 44px; min-width: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-xs);
+    }
+    .pin-field-wrap .toggle-pin:hover { color: var(--text); background: var(--bg-elevated); }
+    .has-pin-badge { font-size: 0.75rem; color: var(--accent); }
+    .save-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--bg-card); border-top: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      z-index: 200;
+    }
+    .save-bar-note { font-size: 0.825rem; color: var(--text-muted); }
+    .admin-nav { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <!-- PIN Modal -->
+  <div id="pin-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <div style="font-size:2.5rem;margin-bottom:16px;" aria-hidden="true">🔒</div>
+      <h2 id="modal-title">Admin Access</h2>
+      <p>Enter the master PIN to access the admin panel</p>
+      <form id="pin-form" novalidate>
+        <div class="form-group" style="display:flex;justify-content:center;margin-bottom:20px;">
+          <input
+            type="password"
+            inputmode="numeric"
+            id="admin-pin"
+            class="input input-pin"
+            placeholder="••••"
+            maxlength="10"
+            autocomplete="off"
+            aria-label="Admin PIN"
+            required
+          >
+        </div>
+        <p id="pin-error" class="text-danger text-sm mb-16 hidden" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="pin-submit">
+          Unlock
+        </button>
+        <div class="mt-16">
+          <a href="/" class="text-muted text-sm">← Back to home</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Setup UI (hidden until authenticated) -->
+  <div id="setup-ui" class="hidden">
+    <!-- Header -->
+    <header style="background:var(--bg-card);border-bottom:1px solid var(--border);padding:16px 20px;">
+      <div class="container">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <div>
+            <h1 style="font-size:1.4rem;">Admin Setup</h1>
+            <p class="text-muted text-sm mt-8">Configure teams and judges for each day</p>
+          </div>
+          <div class="admin-nav">
+            <a href="/admin-dashboard" class="btn btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              Dashboard
+            </a>
+            <a href="/" class="btn btn-ghost btn-sm">← Home</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container setup-body">
+      <div id="days-container"></div>
+    </div>
+  </div>
+
+  <!-- Save Bar -->
+  <div class="save-bar hidden" id="save-bar">
+    <p class="save-bar-note" id="save-status"></p>
+    <button class="btn btn-primary" id="save-btn" type="button">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Save Configuration
+    </button>
+  </div>
+
+  <div id="toast-container" role="region" aria-live="polite"></div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/admin-setup.js"></script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Judge Login — Datathon 2025</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .login-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 20px 60px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 520px;
+    }
+    .step { display: none; }
+    .step.active { display: block; }
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 28px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .step-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--border-mid);
+      transition: background 0.2s;
+    }
+    .step-dot.done    { background: var(--accent); }
+    .step-dot.active  { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    .step-line {
+      flex: 1; height: 2px;
+      background: var(--border);
+      border-radius: 1px;
+      max-width: 48px;
+    }
+    .logo-mark {
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 32px;
+    }
+    .back-btn {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); font-family: inherit;
+      font-size: 0.875rem; padding: 4px 0;
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-bottom: 16px; min-height: 44px;
+    }
+    .back-btn:hover { color: var(--text); }
+    #pin-toggle {
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 0 10px; min-height: 44px;
+      display: flex; align-items: center;
+    }
+    #pin-toggle:hover { color: var(--text); }
+    .pin-wrap { position: relative; display: flex; align-items: center; }
+    .pin-wrap .input { padding-right: 48px; }
+    .pin-wrap #pin-toggle { position: absolute; right: 0; }
+  </style>
+</head>
+<body>
+  <main class="login-page" role="main">
+    <!-- Branding -->
+    <div class="logo-mark" aria-hidden="true">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+        <circle cx="22" cy="22" r="22" fill="rgba(61,207,160,0.1)"/>
+        <path d="M22 10L34 30H10L22 10Z" stroke="#3dcfa0" stroke-width="2" stroke-linejoin="round" fill="rgba(61,207,160,0.15)"/>
+      </svg>
+    </div>
+
+    <div class="login-card">
+      <!-- Step indicator -->
+      <div class="step-indicator" role="status" aria-label="Step progress">
+        <div class="step-dot active" id="dot-1"></div>
+        <div class="step-line"></div>
+        <div class="step-dot" id="dot-2"></div>
+        <div class="step-line"></div>
+        <div class="step-dot" id="dot-3"></div>
+        <span id="step-label">Select your day</span>
+      </div>
+
+      <!-- Step 1: Day Selection -->
+      <div class="step active" id="step-day" role="group" aria-labelledby="step1-heading">
+        <h1 id="step1-heading" style="font-size:1.8rem;margin-bottom:8px;">Judge Login</h1>
+        <p class="text-muted mb-24">Which day are you judging?</p>
+        <div class="day-cards" id="day-cards" role="list" aria-label="Available days"></div>
+        <div class="mt-24 text-center">
+          <a href="/" class="text-muted text-sm">← Back to home</a>
+        </div>
+      </div>
+
+      <!-- Step 2: Judge Selection -->
+      <div class="step" id="step-judge" role="group" aria-labelledby="step2-heading">
+        <button class="back-btn" id="back-to-day" type="button" aria-label="Go back to day selection">
+          ← Back
+        </button>
+        <h2 id="step2-heading" style="font-size:1.6rem;margin-bottom:8px;">Select your name</h2>
+        <p class="text-muted mb-24" id="judges-day-label"></p>
+        <div class="judge-grid" id="judge-grid" role="list" aria-label="Judges"></div>
+      </div>
+
+      <!-- Step 3: PIN Entry -->
+      <div class="step" id="step-pin" role="group" aria-labelledby="step3-heading">
+        <button class="back-btn" id="back-to-judges" type="button" aria-label="Go back to judge selection">
+          ← Back
+        </button>
+        <h2 id="step3-heading" style="font-size:1.6rem;margin-bottom:4px;">Enter your PIN</h2>
+        <p class="text-muted mb-24">
+          Welcome, <strong id="selected-name" style="color:var(--text)"></strong>
+        </p>
+        <form id="login-form" novalidate>
+          <div class="form-group">
+            <label class="label" for="judge-pin">PIN</label>
+            <div class="pin-wrap">
+              <input
+                type="password"
+                inputmode="numeric"
+                id="judge-pin"
+                class="input input-pin"
+                placeholder="••••"
+                maxlength="10"
+                autocomplete="current-password"
+                aria-label="Your PIN"
+                required
+              >
+              <button type="button" id="pin-toggle" aria-label="Toggle PIN visibility">
+                <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <p id="login-error" class="text-danger text-sm mb-16 hidden" role="alert"></p>
+          <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-submit">
+            Sign In
+          </button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-container" role="region" aria-live="polite"></div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/judge-login.js"></script>
+</body>
+</html>
