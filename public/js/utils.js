@@ -25,6 +25,12 @@ function showToast(message, type = 'success') {
 /* ── API Helpers ─────────────────────────────────────────────────────────── */
 async function apiFetch(url, options = {}) {
   const res = await fetch(url, {
+    // Explicit, not implied. Older mobile browsers default fetch() to
+    // credentials:'omit', which silently drops the session cookie — the judge
+    // signs in, the cookie is never stored, /score sees no session and sends
+    // them straight back to the login screen.
+    credentials: 'same-origin',
+    cache:       'no-store',
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
     body: options.body ? JSON.stringify(options.body) : undefined,

@@ -53,15 +53,6 @@
       margin-bottom: 16px; min-height: 44px;
     }
     .back-btn:hover { color: var(--text); }
-    #pin-toggle {
-      background: none; border: none; cursor: pointer;
-      color: var(--text-muted); padding: 0 10px; min-height: 44px;
-      display: flex; align-items: center;
-    }
-    #pin-toggle:hover { color: var(--text); }
-    .pin-wrap { position: relative; display: flex; align-items: center; }
-    .pin-wrap .input { padding-right: 48px; }
-    .pin-wrap #pin-toggle { position: absolute; right: 0; }
   </style>
 </head>
 <body>
@@ -80,13 +71,11 @@
         <div class="step-dot active" id="dot-1"></div>
         <div class="step-line"></div>
         <div class="step-dot" id="dot-2"></div>
-        <div class="step-line"></div>
-        <div class="step-dot" id="dot-3"></div>
         <span id="step-label">Select your day</span>
       </div>
 
       <!-- Step 1: Day Selection -->
-      <div class="step active" id="step-day" role="group" aria-labelledby="step1-heading">
+      <div class="step active" id="step-day" role="group" aria-labelledby="step1-heading" tabindex="-1">
         <h1 id="step1-heading" style="font-size:1.8rem;margin-bottom:8px;">Judge Login</h1>
         <p class="text-muted" style="margin-bottom:4px;" data-event="name"></p>
         <p class="text-muted mb-24">Which day are you judging?</p>
@@ -97,53 +86,16 @@
       </div>
 
       <!-- Step 2: Judge Selection -->
-      <div class="step" id="step-judge" role="group" aria-labelledby="step2-heading">
+      <div class="step" id="step-judge" role="group" aria-labelledby="step2-heading" tabindex="-1">
         <button class="back-btn" id="back-to-day" type="button" aria-label="Go back to day selection">
           ← Back
         </button>
         <h2 id="step2-heading" style="font-size:1.6rem;margin-bottom:8px;">Select your name</h2>
         <p class="text-muted mb-24" id="judges-day-label"></p>
         <div class="judge-grid" id="judge-grid" role="list" aria-label="Judges"></div>
+        <p id="login-error" class="text-danger text-sm mt-16 hidden" role="alert"></p>
       </div>
 
-      <!-- Step 3: PIN Entry -->
-      <div class="step" id="step-pin" role="group" aria-labelledby="step3-heading">
-        <button class="back-btn" id="back-to-judges" type="button" aria-label="Go back to judge selection">
-          ← Back
-        </button>
-        <h2 id="step3-heading" style="font-size:1.6rem;margin-bottom:4px;">Enter your PIN</h2>
-        <p class="text-muted mb-24">
-          Welcome, <strong id="selected-name" style="color:var(--text)"></strong>
-        </p>
-        <form id="login-form" novalidate>
-          <div class="form-group">
-            <label class="label" for="judge-pin">PIN</label>
-            <div class="pin-wrap">
-              <input
-                type="password"
-                inputmode="numeric"
-                id="judge-pin"
-                class="input input-pin"
-                placeholder="••••"
-                maxlength="10"
-                autocomplete="current-password"
-                aria-label="Your PIN"
-                required
-              >
-              <button type="button" id="pin-toggle" aria-label="Toggle PIN visibility">
-                <svg id="eye-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <p id="login-error" class="text-danger text-sm mb-16 hidden" role="alert"></p>
-          <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-submit">
-            Sign In
-          </button>
-        </form>
-      </div>
     </div>
   </main>
 

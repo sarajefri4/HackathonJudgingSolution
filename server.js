@@ -1,9 +1,10 @@
 require('dotenv').config();
 
-const express = require('express');
-const session = require('express-session');
-const path    = require('path');
-const db      = require('./db');
+const express      = require('express');
+const session      = require('express-session');
+const path         = require('path');
+const db           = require('./db');
+const SqliteStore  = require('./session-store');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -14,17 +15,34 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
+  // Sessions live in the database, not in memory, so a restart doesn't sign
+  // every judge out at once.
+  store:             new SqliteStore(),
   secret:            process.env.SESSION_SECRET || 'datathon-judging-secret',
   resave:            false,
   saveUninitialized: false,
+  rolling:           true,   // refresh the 24h window on each request
   cookie: {
     maxAge:   24 * 60 * 60 * 1000, // 24 h
     httpOnly: true,
-    sameSite: 'strict',
+    // 'lax', not 'strict': judges often arrive from a QR code or a link pasted
+    // into a chat app, and 'strict' withholds the cookie on that first
+    // navigation, making them look signed out. Cross-site POSTs still send no
+    // cookie, so CSRF protection is unchanged.
+    sameSite: 'lax',
   },
 }));
 
 // ── Static assets ───────────────────────────────────────────────────────────
+// Pages and scripts are served no-store. Judges keep the app open on phones and
+// tablets for hours; without this a device can hold a cached copy of the login
+// script from before a fix and keep failing in ways nobody can reproduce.
+app.use((req, res, next) => {
+  if (/\.(html|js|css)$/.test(req.path) || !path.extname(req.path)) {
+    res.set('Cache-Control', 'no-store, must-revalidate');
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── API routes ──────────────────────────────────────────────────────────────

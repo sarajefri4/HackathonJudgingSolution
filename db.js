@@ -56,18 +56,39 @@ const db = {
     });
   },
 
-  /** Run statements inside a serialized block — emulates a transaction. */
-  async transaction(fn) {
-    await db.run('BEGIN');
-    try {
-      await fn();
-      await db.run('COMMIT');
-    } catch (err) {
-      await db.run('ROLLBACK');
-      throw err;
-    }
+  /**
+   * Run statements inside a transaction.
+   *
+   * Every request shares one sqlite3 connection, so two overlapping
+   * transactions would interleave on it: the second BEGIN fails with "cannot
+   * start a transaction within a transaction", and worse, one caller's
+   * ROLLBACK discards the other's work. An admin saving the config while a
+   * judge submits a score is exactly that collision. The queue below serialises
+   * transactions so each one runs start-to-finish on its own.
+   */
+  transaction(fn) {
+    const run = async () => {
+      await db.run('BEGIN');
+      try {
+        const result = await fn();
+        await db.run('COMMIT');
+        return result;
+      } catch (err) {
+        try { await db.run('ROLLBACK'); } catch { /* already unwound */ }
+        throw err;
+      }
+    };
+
+    // Chain onto the tail of the queue, but never let one failure break the
+    // chain for everyone behind it.
+    const queued = txnQueue.then(run, run);
+    txnQueue = queued.catch(() => {});
+    return queued;
   },
 };
+
+/** Tail of the serialised transaction queue. */
+let txnQueue = Promise.resolve();
 
 /* ── Schema init (runs once on startup) ─────────────────────────────────── */
 async function initSchema() {
@@ -78,6 +99,14 @@ async function initSchema() {
     CREATE TABLE IF NOT EXISTS config (
       key   TEXT PRIMARY KEY,
       value TEXT
+    );
+
+    /* Login sessions. Kept in the database rather than in memory so that
+       restarting the server doesn't sign every judge out mid-event. */
+    CREATE TABLE IF NOT EXISTS sessions (
+      sid        TEXT PRIMARY KEY,
+      data       TEXT    NOT NULL,
+      expires_at INTEGER NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS days (
