@@ -1,6 +1,6 @@
 # Datathon 2025 — Judging App
 
-A full-stack web application for running structured, PIN-authenticated judging sessions at a datathon event. Judges score teams on four weighted criteria from a tablet or any modern browser.
+A full-stack web application for running structured, PIN-authenticated judging sessions at a hackathon or datathon. Everything is configurable from the admin panel — the event name, how many days run, the teams and judges on each day, and the judging criteria themselves (add, remove, re-weight, and set each one's rating scale). Judges score from a tablet or any modern browser.
 
 ---
 
@@ -23,6 +23,9 @@ Open `.env` and set:
 | Variable         | Default | Description                              |
 |------------------|---------|------------------------------------------|
 | `ADMIN_PIN`      | `2021`  | Master PIN for the admin panel           |
+
+If no `.env` exists, the admin PIN falls back to `2021` so the app still runs — but set
+`SESSION_SECRET` before using it anywhere beyond a local network.
 | `SESSION_SECRET` | —       | **Change this** to a long random string  |
 | `PORT`           | `3000`  | Port the server listens on               |
 
@@ -55,17 +58,23 @@ Open your browser to **http://localhost:3000** (or your machine's LAN IP for tab
 
 1. Go to **http://localhost:3000** → click **Admin**
 2. Enter the admin PIN (default: `2021`)
-3. Add teams and judges for **Day 1** (April 20) and **Day 2** (April 21)
-4. Set a PIN for each judge
-5. Click **Save Configuration**
-6. Click **Dashboard** to monitor scores
+3. **Event** — set the event name and tagline shown on the home page and judge screens
+4. **Judging Criteria** — add, remove or reorder criteria; set each one's weight and max rating
+5. **Days** — add as many days as you need; each has its own teams and judges
+6. Set a PIN for each judge
+7. Click **Save Configuration**
+8. Click **Dashboard** to monitor scores
+
+Everything on this page is reconciled on save: anything you remove from a list is deleted.
+Removing a **day** also deletes its teams, judges and their submitted scores; removing a
+**criterion** deletes the scores judges recorded for it. Both prompt for confirmation first.
 
 ### Judging
 
 1. Go to **http://localhost:3000** → click **I'm a Judge**
 2. Select your day, then your name
 3. Enter your PIN
-4. Score each team using the 0–10 sliders for each criterion
+4. Score each team using the sliders — one per criterion, each running 0 to that criterion's max rating
 5. Press **Submit Score** — the app auto-advances to the next unscored team
 6. You can return to any team to review or update your score
 
@@ -80,14 +89,44 @@ Open your browser to **http://localhost:3000** (or your machine's LAN IP for tab
 
 ## Scoring Rubric
 
-| Criterion            | Weight | Description |
-|----------------------|--------|-------------|
-| Business Impact      | 30%    | How meaningful, actionable, and relevant is the insight? |
-| Quality of Analysis  | 25%    | How effectively was Sigma used to derive the insight? |
-| Storytelling         | 30%    | How clearly and compellingly is the insight communicated? |
-| Feasibility          | 15%    | Can the insight realistically be acted upon? |
+The rubric is **fully configurable** from Admin Setup → *Judging Criteria*. Each criterion has:
 
-**Formula:** `total = (impact/10 × 0.30 + analysis/10 × 0.25 + story/10 × 0.30 + feasibility/10 × 0.15) × 100`
+| Field           | Meaning |
+|-----------------|---------|
+| **Name**        | Shown as the slider's heading |
+| **Description** | Optional guidance shown to judges under the name |
+| **Weight**      | How much this criterion counts toward the 0–100 total |
+| **Max rating**  | The top of this criterion's slider (10, 5, 100 — whatever you like) |
+
+A fresh database is seeded with these four defaults, which you can change or delete:
+
+| Criterion            | Weight | Max | Description |
+|----------------------|--------|-----|-------------|
+| Business Impact      | 30%    | 10  | How meaningful, actionable, and relevant is the insight? |
+| Quality of Analysis  | 25%    | 10  | How effectively was Sigma used to derive the insight? |
+| Storytelling         | 30%    | 10  | How clearly and compellingly is the insight communicated? |
+| Feasibility          | 15%    | 10  | Can the insight realistically be acted upon? |
+
+**Formula:** each criterion contributes its score as a fraction of its own max, weighted by
+its share of the total weight:
+
+```
+total = Σ (value / max_rating × weight) / Σ weight × 100
+```
+
+Weights are **relative**, so they don't have to add up to 100 — a set of 30/30/30 is scored
+identically to 10/10/10. The setup page shows the running total and tells you when it isn't 100.
+
+### Changing the rubric mid-event
+
+Editing weights or deleting a criterion **recalculates every submitted total immediately**, so
+the leaderboard stays consistent. Lowering a criterion's max rating clamps any score already
+above the new maximum.
+
+Adding a criterion is the one case that needs judges' attention: existing scores have no value
+recorded for it, so it counts as 0 until they score that team again. The judge's screen flags
+those teams with a **Needs re-scoring** badge and excludes them from the "scored" count, so
+nothing silently drags a team's total down.
 
 ---
 
@@ -95,7 +134,8 @@ Open your browser to **http://localhost:3000** (or your machine's LAN IP for tab
 
 ```
 ├── server.js          # Express app & routing
-├── db.js              # SQLite setup (better-sqlite3)
+├── db.js              # SQLite setup, schema & seed data
+├── scoring.js         # Rubric helpers: weighted total + total recalculation
 ├── routes/
 │   ├── auth.js        # Login / session endpoints
 │   ├── admin.js       # Admin setup & dashboard
@@ -128,6 +168,8 @@ Open your browser to **http://localhost:3000** (or your machine's LAN IP for tab
 
 | Method | Path                          | Auth   | Description                        |
 |--------|-------------------------------|--------|------------------------------------|
+| GET    | `/api/config`                 | —      | Event name & tagline               |
+| GET    | `/api/criteria`               | —      | The judging criteria               |
 | POST   | `/api/auth/admin`             | —      | Admin PIN login                    |
 | POST   | `/api/auth/judge`             | —      | Judge PIN login                    |
 | GET    | `/api/auth/me`                | —      | Get current session                |
@@ -135,7 +177,7 @@ Open your browser to **http://localhost:3000** (or your machine's LAN IP for tab
 | GET    | `/api/days`                   | —      | List days                          |
 | GET    | `/api/days/:id/teams`         | —      | List teams for a day               |
 | GET    | `/api/days/:id/judges`        | —      | List judge names for a day         |
-| GET    | `/api/admin/config`           | Admin  | Full config (teams + judges)       |
+| GET    | `/api/admin/config`           | Admin  | Full config (event, days, teams, judges, criteria) |
 | POST   | `/api/admin/setup`            | Admin  | Save configuration                 |
 | GET    | `/api/admin/dashboard/:dayId` | Admin  | All scores + aggregates for a day  |
 | GET    | `/api/admin/export/:dayId`    | Admin  | Download CSV                       |
@@ -146,7 +188,10 @@ Open your browser to **http://localhost:3000** (or your machine's LAN IP for tab
 
 ## CSV Export Columns
 
-`Day, Judge, Team, Business Impact, Quality of Analysis, Storytelling, Feasibility, Total, Notes, Submitted At`
+`Day, Judge, Team, <one column per criterion>, Total, Notes, Submitted At`
+
+Each criterion column is labelled with its weight share and max rating, e.g.
+`Business Impact (30%, /10)`. The columns follow whatever rubric is configured at export time.
 
 ---
 
@@ -154,7 +199,7 @@ Open your browser to **http://localhost:3000** (or your machine's LAN IP for tab
 
 - **Runtime:** Node.js
 - **Framework:** Express 4
-- **Database:** SQLite via [better-sqlite3](https://github.com/WiseLibs/better-sqlite3)
+- **Database:** SQLite via [sqlite3](https://github.com/TryGhost/node-sqlite3)
 - **Auth:** bcrypt-hashed PINs + express-session
 - **Frontend:** Vanilla HTML/CSS/JS — no framework
 - **Fonts:** DM Serif Display + DM Sans (downloaded locally for offline use)
@@ -163,7 +208,8 @@ Open your browser to **http://localhost:3000** (or your machine's LAN IP for tab
 
 ## Resetting the Database
 
-Stop the server, then delete `data/judging.db`. On next start a fresh database with the two default days is created automatically.
+Stop the server, then delete `data/judging.db`. On next start a fresh database is created
+automatically with two default days and the four default criteria.
 
 ```bash
 rm data/judging.db

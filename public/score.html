@@ -51,6 +51,9 @@
       font-size: 0.8rem;
       opacity: 0.85;
     }
+    /* .scored sets an accent colour; re-assert the active tab's dark text so an
+       already-scored active tab doesn't render accent-on-accent (invisible). */
+    .team-btn.active.scored { color: #0a1e15; }
     .team-btn.active.scored::after { color: #0a1e15; }
     .team-btn:not(.active):hover { border-color: var(--border-mid); background: var(--bg-elevated); color: var(--text); }
 
@@ -117,6 +120,24 @@
     }
     .all-scored-banner h3 { color: var(--accent); font-size: 1.2rem; margin-bottom: 6px; }
     .all-scored-banner p { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* Shown when the rubric gained a criterion after this score was submitted */
+    .stale-note {
+      background: rgba(240,192,64,0.10);
+      border: 1px solid rgba(240,192,64,0.32);
+      color: var(--warning);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      font-size: 0.875rem;
+      margin-bottom: 18px;
+    }
+    .team-btn.stale {
+      border-color: rgba(240,192,64,0.45);
+      color: var(--warning);
+    }
+    .team-btn.stale::after { content: '!'; font-weight: 700; opacity: 0.9; }
+    .team-btn.active.stale { color: #0a1e15; }
+    .team-btn.active.stale::after { color: #0a1e15; }
   </style>
 </head>
 <body>

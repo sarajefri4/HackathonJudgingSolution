@@ -7,6 +7,7 @@ const db      = require('./db');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_PIN = process.env.ADMIN_PIN || '2021';
 
 // ── Middleware ──────────────────────────────────────────────────────────────
 app.use(express.json());
@@ -32,6 +33,26 @@ app.use('/api/admin',  require('./routes/admin'));
 app.use('/api/scores', require('./routes/scores'));
 
 // Public lookups (no auth required)
+
+// Event branding — used by the landing page and headers.
+app.get('/api/config', async (req, res) => {
+  try {
+    const rows = await db.all('SELECT key, value FROM config');
+    res.json(Object.fromEntries(rows.map(r => [r.key, r.value])));
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// The rubric judges score against.
+app.get('/api/criteria', async (req, res) => {
+  try {
+    res.json(await db.all('SELECT * FROM criteria ORDER BY position, id'));
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/api/days', async (req, res) => {
   try {
     res.json(await db.all('SELECT * FROM days ORDER BY id'));
@@ -72,7 +93,7 @@ db._ready.then(() => {
     console.log(`\n  Datathon Judging App`);
     console.log(`  ─────────────────────────────────────`);
     console.log(`  Local:     http://localhost:${PORT}`);
-    console.log(`  Admin PIN: ${process.env.ADMIN_PIN || '(not set — check .env)'}`);
+    console.log(`  Admin PIN: ${ADMIN_PIN}`);
     console.log(`\n  → Open in browser or share your LAN IP with judges\n`);
   });
 });

@@ -5,6 +5,8 @@ let lastRefresh   = null;
 const REFRESH_INTERVAL = 30_000; // 30 s
 
 (async () => {
+  applyEventBranding();
+
   const session = await getSession();
   if (session && session.type === 'admin') {
     document.getElementById('pin-modal').classList.add('hidden');
@@ -130,10 +132,11 @@ function setRefreshStatus(status) {
 }
 
 /* ── Render Dashboard ────────────────────────────────────────────────────── */
-function renderDashboard({ day, teams, judges, scores, teamAverages, totalJudges }) {
+function renderDashboard({ day, teams, judges, criteria, scores, teamAverages, totalJudges }) {
   renderStats(teams, judges, scores, totalJudges);
   renderLeaderboard(teamAverages, totalJudges);
   renderScoreGrid(teams, judges, scores);
+  renderCriteriaBreakdown(teams, criteria, scores);
 }
 
 /* Stats Row */
@@ -268,6 +271,68 @@ function renderScoreGrid(teams, judges, scores) {
 
   document.getElementById('grid-legend').textContent =
     `${judges.length} judge${judges.length !== 1 ? 's' : ''} × ${teams.length} team${teams.length !== 1 ? 's' : ''}`;
+}
+
+/* Criteria Breakdown — average raw score per criterion, per team */
+function renderCriteriaBreakdown(teams, criteria, scores) {
+  const table  = document.getElementById('criteria-grid');
+  const legend = document.getElementById('criteria-legend');
+
+  if (!criteria || criteria.length === 0) {
+    table.innerHTML = '<tr><td style="padding:32px;text-align:center;color:var(--text-muted);">No criteria configured.</td></tr>';
+    legend.textContent = '';
+    return;
+  }
+  if (teams.length === 0) {
+    table.innerHTML = '<tr><td style="padding:32px;text-align:center;color:var(--text-muted);">No teams configured.</td></tr>';
+    legend.textContent = '';
+    return;
+  }
+
+  const weightSum = criteria.reduce((s, c) => s + c.weight, 0) || 1;
+
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  headerRow.innerHTML = '<th scope="col">Criterion</th>';
+  for (const team of teams) {
+    headerRow.innerHTML += `<th scope="col">${escHtml(team.name)}</th>`;
+  }
+  thead.appendChild(headerRow);
+
+  const tbody = document.createElement('tbody');
+  for (const c of criteria) {
+    const tr = document.createElement('tr');
+    const pct = Math.round(c.weight / weightSum * 100);
+    tr.innerHTML = `
+      <td>
+        <strong>${escHtml(c.label)}</strong>
+        <span class="text-muted text-sm"> · ${pct}% · /${c.max_score}</span>
+      </td>`;
+
+    for (const team of teams) {
+      // Only scores that actually recorded this criterion count toward its average.
+      const vals = scores
+        .filter(s => s.team_id === team.id)
+        .map(s => s.values?.[c.id])
+        .filter(v => v !== undefined);
+
+      if (vals.length === 0) {
+        tr.innerHTML += '<td class="cell-empty">—</td>';
+      } else {
+        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+        const share = avg / c.max_score;
+        const cls = share >= 0.75 ? 'text-accent' : share < 0.4 ? 'text-danger' : '';
+        tr.innerHTML += `<td class="${cls}">${avg.toFixed(1)}</td>`;
+      }
+    }
+    tbody.appendChild(tr);
+  }
+
+  table.innerHTML = '';
+  table.appendChild(thead);
+  table.appendChild(tbody);
+
+  legend.textContent = `${criteria.length} criteri${criteria.length !== 1 ? 'a' : 'on'} · average raw score per team`;
 }
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */

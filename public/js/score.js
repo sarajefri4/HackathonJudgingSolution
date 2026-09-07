@@ -1,26 +1,30 @@
 /* ── Scoring Page ─────────────────────────────────────────────────────────── */
-const CRITERIA = [
-  { key: 'impact',      label: 'Business Impact',      weight: 0.30, desc: 'How meaningful, actionable, and relevant is the insight drawn from the data?' },
-  { key: 'analysis',   label: 'Quality of Analysis',  weight: 0.25, desc: 'How effectively was the data explored and leveraged using Sigma to derive the insight?' },
-  { key: 'story',      label: 'Storytelling',         weight: 0.30, desc: 'How clearly and compellingly is the insight communicated?' },
-  { key: 'feasibility',label: 'Feasibility',          weight: 0.15, desc: 'Can this insight realistically be acted upon, and does the team understand its implications?' },
-];
-
 let session   = null;
+let criteria  = [];        // rubric, loaded from the server
 let teams     = [];
 let scoredMap = new Map(); // teamId → score object
 let activeTeamId = null;
 
 (async () => {
+  applyEventBranding();
+
   session = await requireJudgeSession();
   if (!session) return;
 
   document.getElementById('header-title').textContent = session.judgeName;
-  document.getElementById('header-sub').textContent   = `Day ${session.dayId === 1 ? '1 — April 20' : '2 — April 21'}`;
-
   document.getElementById('logout-btn').addEventListener('click', logout);
 
-  await Promise.all([loadTeams(), loadMyScores()]);
+  await Promise.all([loadDayLabel(), loadCriteria(), loadTeams(), loadMyScores()]);
+
+  if (criteria.length === 0) {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('submit-bar').classList.add('hidden');
+    document.getElementById('team-panel').classList.remove('hidden');
+    document.getElementById('team-panel').innerHTML =
+      '<div class="empty-state"><p>No judging criteria have been set up yet. Please contact the admin.</p></div>';
+    return;
+  }
+
   renderTeamTabs();
 
   // Activate first unscored team, or first team if all scored
@@ -29,6 +33,21 @@ let activeTeamId = null;
 })();
 
 /* ── Load Data ───────────────────────────────────────────────────────────── */
+async function loadDayLabel() {
+  try {
+    const days = await apiGet('/api/days');
+    const day  = days.find(d => d.id === session.dayId);
+    document.getElementById('header-sub').textContent =
+      day ? [day.name, day.date].filter(Boolean).join(' — ') : '';
+  } catch {
+    document.getElementById('header-sub').textContent = '';
+  }
+}
+
+async function loadCriteria() {
+  criteria = await apiGet('/api/criteria');
+}
+
 async function loadTeams() {
   teams = await apiGet(`/api/days/${session.dayId}/teams`);
 }
@@ -39,6 +58,19 @@ async function loadMyScores() {
   for (const s of scores) {
     scoredMap.set(s.team_id, s);
   }
+}
+
+/* ── Score Completeness ──────────────────────────────────────────────────
+   A criterion added after a judge submitted has no recorded value on that
+   score — it counts as 0 until the judge scores the team again, so flag it
+   rather than letting it quietly drag the team's total down. */
+function isComplete(score) {
+  if (!score) return false;
+  return criteria.every(c => score.values?.[c.id] !== undefined);
+}
+
+function isStale(score) {
+  return !!score && !isComplete(score);
 }
 
 /* ── Team Tabs ───────────────────────────────────────────────────────────── */
@@ -52,8 +84,11 @@ function renderTeamTabs() {
     btn.textContent = team.name;
     btn.dataset.teamId = team.id;
     btn.setAttribute('type', 'button');
-    btn.setAttribute('aria-label', `${team.name}${scoredMap.has(team.id) ? ' (scored)' : ''}`);
-    if (scoredMap.has(team.id)) btn.classList.add('scored');
+    const score = scoredMap.get(team.id);
+    btn.setAttribute('aria-label',
+      `${team.name}${isComplete(score) ? ' (scored)' : isStale(score) ? ' (needs re-scoring)' : ''}`);
+    if (isComplete(score))    btn.classList.add('scored');
+    else if (isStale(score))  btn.classList.add('stale');
     btn.addEventListener('click', () => activateTeam(team.id));
     scroll.appendChild(btn);
   }
@@ -64,8 +99,10 @@ function renderTeamTabs() {
 function updateTeamTab(teamId) {
   const btn = document.querySelector(`.team-btn[data-team-id="${teamId}"]`);
   if (!btn) return;
-  if (scoredMap.has(teamId)) {
-    btn.classList.add('scored');
+  const score = scoredMap.get(teamId);
+  btn.classList.toggle('scored', isComplete(score));
+  btn.classList.toggle('stale',  isStale(score));
+  if (isComplete(score)) {
     btn.setAttribute('aria-label', `${teams.find(t => t.id === teamId)?.name} (scored)`);
   }
 }
@@ -86,7 +123,7 @@ function setActiveTab(teamId) {
 
 function updateProgressPill() {
   const total = teams.length;
-  const done  = scoredMap.size;
+  const done  = teams.filter(t => isComplete(scoredMap.get(t.id))).length;
   document.getElementById('progress-pill').textContent = `${done}/${total} scored`;
 }
 
@@ -108,7 +145,9 @@ function renderScoringPanel(teamId) {
   loading.classList.add('hidden');
   panel.classList.remove('hidden');
 
-  const allScored = teams.length > 0 && scoredMap.size === teams.length;
+  const allScored = teams.length > 0 && teams.every(t => isComplete(scoredMap.get(t.id)));
+  const stale     = isStale(existing);
+  const weightSum = criteria.reduce((s, c) => s + c.weight, 0) || 1;
 
   panel.innerHTML = `
     ${allScored ? `
@@ -120,14 +159,28 @@ function renderScoringPanel(teamId) {
 
     <div class="team-heading">
       <h2>${escHtml(team.name)}</h2>
-      ${existing
-        ? '<span class="status-pill status-done">✓ Submitted</span>'
-        : '<span class="status-pill status-none">Not yet scored</span>'
+      ${stale
+        ? '<span class="status-pill status-pending">Needs re-scoring</span>'
+        : existing
+          ? '<span class="status-pill status-done">✓ Submitted</span>'
+          : '<span class="status-pill status-none">Not yet scored</span>'
       }
     </div>
 
+    ${stale ? `
+      <div class="stale-note" role="status">
+        The rubric changed since you scored this team. Set the criteria below and submit again
+        so this team's total counts in full.
+      </div>
+    ` : ''}
+
     <div id="criteria-container">
-      ${CRITERIA.map(c => criterionCardHTML(c, existing ? existing[c.key] : 5)).join('')}
+      ${criteria.map(c => {
+        // A criterion added after this score was submitted has no stored value.
+        const saved = existing?.values?.[c.id];
+        const value = saved !== undefined ? saved : c.max_score / 2;
+        return criterionCardHTML(c, value, weightSum);
+      }).join('')}
     </div>
 
     <div class="notes-section">
@@ -143,9 +196,9 @@ function renderScoringPanel(teamId) {
   `;
 
   // Wire up sliders
-  for (const c of CRITERIA) {
-    const slider  = document.getElementById(`slider-${c.key}`);
-    const display = document.getElementById(`val-${c.key}`);
+  for (const c of criteria) {
+    const slider  = document.getElementById(`slider-${c.id}`);
+    const display = document.getElementById(`val-${c.id}`);
     initSlider(slider, display);
     slider.addEventListener('input', updateTotal);
   }
@@ -158,46 +211,58 @@ function renderScoringPanel(teamId) {
   submitBtn.onclick     = submitScore;
 }
 
-function criterionCardHTML(c, value = 5) {
-  const pct    = (value / 10) * 100;
-  const wLabel = `${Math.round(c.weight * 100)}%`;
+function criterionCardHTML(c, value, weightSum) {
+  const max    = c.max_score;
+  const wLabel = `${Math.round(c.weight / weightSum * 100)}%`;
+  // Step finely enough to be useful on small scales, in halves on larger ones.
+  const step   = max <= 5 ? 0.25 : 0.5;
+  const ticks  = [0, 0.25, 0.5, 0.75, 1].map(f => trimNum(max * f));
+
   return `
     <div class="criterion-card">
       <div class="criterion-header">
         <span class="criterion-name">${escHtml(c.label)}</span>
         <span class="badge badge-accent">${wLabel}</span>
       </div>
-      <p class="criterion-desc">${escHtml(c.desc)}</p>
+      ${c.description ? `<p class="criterion-desc">${escHtml(c.description)}</p>` : ''}
       <div class="slider-row">
         <input
           type="range"
-          id="slider-${c.key}"
-          min="0" max="10" step="0.5"
+          id="slider-${c.id}"
+          min="0" max="${max}" step="${step}"
           value="${value}"
           aria-label="${escHtml(c.label)} score"
           aria-valuemin="0"
-          aria-valuemax="10"
+          aria-valuemax="${max}"
           aria-valuenow="${value}"
         >
-        <span class="slider-value" id="val-${c.key}" aria-live="polite">${parseFloat(value).toFixed(1)}</span>
+        <span class="slider-value" id="val-${c.id}" aria-live="polite">${parseFloat(value).toFixed(1)}</span>
       </div>
       <div class="slider-ticks" aria-hidden="true">
-        <span>0</span><span>2.5</span><span>5</span><span>7.5</span><span>10</span>
+        ${ticks.map(t => `<span>${t}</span>`).join('')}
       </div>
     </div>
   `;
 }
 
+function trimNum(n) {
+  return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(2)));
+}
+
 /* ── Update Total ────────────────────────────────────────────────────────── */
-function updateTotal() {
-  const vals = {};
-  for (const c of CRITERIA) {
-    vals[c.key] = parseFloat(document.getElementById(`slider-${c.key}`)?.value || 0);
-    // Update aria-valuenow
-    const slider = document.getElementById(`slider-${c.key}`);
-    if (slider) slider.setAttribute('aria-valuenow', vals[c.key]);
+function currentValues() {
+  const values = {};
+  for (const c of criteria) {
+    const slider = document.getElementById(`slider-${c.id}`);
+    const v = parseFloat(slider?.value || 0);
+    values[c.id] = v;
+    if (slider) slider.setAttribute('aria-valuenow', v);
   }
-  const total = calcTotal(vals.impact, vals.analysis, vals.story, vals.feasibility);
+  return values;
+}
+
+function updateTotal() {
+  const total = calcTotal(criteria, currentValues());
   document.getElementById('total-display').textContent = total.toFixed(1);
 }
 
@@ -207,13 +272,12 @@ async function submitScore() {
   const team  = teams.find(t => t.id === activeTeamId);
   if (!team) return;
 
+  const values = currentValues();
   const payload = {
-    teamId:      activeTeamId,
-    notes:       document.getElementById('notes-input')?.value || '',
+    teamId: activeTeamId,
+    notes:  document.getElementById('notes-input')?.value || '',
+    values,
   };
-  for (const c of CRITERIA) {
-    payload[c.key] = parseFloat(document.getElementById(`slider-${c.key}`)?.value || 0);
-  }
 
   btn.disabled  = true;
   btn.innerHTML = '<span class="spinner"></span> Saving…';
@@ -221,7 +285,10 @@ async function submitScore() {
   try {
     const result = await apiPost('/api/scores', payload);
     // Update local scored map
-    scoredMap.set(activeTeamId, { ...payload, total: result.total });
+    // Keys come back from the inputs as strings; normalise so isComplete() matches.
+    const savedValues = {};
+    for (const c of criteria) savedValues[c.id] = values[c.id];
+    scoredMap.set(activeTeamId, { ...payload, values: savedValues, total: result.total });
     updateTeamTab(activeTeamId);
     updateProgressPill();
 
@@ -236,10 +303,10 @@ async function submitScore() {
     btn.textContent = 'Update Score';
 
     // Auto-advance to next unscored team
-    const next = teams.find(t => !scoredMap.has(t.id) && t.id !== activeTeamId);
+    const next = teams.find(t => !isComplete(scoredMap.get(t.id)) && t.id !== activeTeamId);
     if (next) {
       setTimeout(() => activateTeam(next.id), 600);
-    } else if (teams.every(t => scoredMap.has(t.id))) {
+    } else if (teams.every(t => isComplete(scoredMap.get(t.id)))) {
       // All done - re-render to show banner
       setTimeout(() => renderScoringPanel(activeTeamId), 600);
     }

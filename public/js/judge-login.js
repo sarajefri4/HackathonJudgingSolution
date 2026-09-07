@@ -3,6 +3,8 @@ let selectedDayId   = null;
 let selectedJudgeId = null;
 
 (async () => {
+  applyEventBranding();
+
   // If already logged in as judge, go straight to scoring
   const session = await getSession();
   if (session && session.type === 'judge') {

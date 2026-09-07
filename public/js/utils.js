@@ -81,6 +81,56 @@ function initSlider(slider, displayEl) {
 }
 
 /* ── Weighted Total ──────────────────────────────────────────────────────── */
-function calcTotal(impact, analysis, story, feasibility) {
-  return (impact / 10 * 0.30 + analysis / 10 * 0.25 + story / 10 * 0.30 + feasibility / 10 * 0.15) * 100;
+/**
+ * Mirrors the server's calculation in scoring.js: each criterion contributes
+ * its value as a fraction of its own max, weighted by its share of the total
+ * weight. Weights need not add to 100.
+ *
+ * @param {Array}  criteria criterion rows ({ id, weight, max_score })
+ * @param {Object} values   criterion id → raw score
+ * @returns {number} 0–100
+ */
+function calcTotal(criteria, values) {
+  const weightSum = criteria.reduce((sum, c) => sum + (Number(c.weight) || 0), 0);
+  if (weightSum <= 0) return 0;
+
+  const weighted = criteria.reduce((sum, c) => {
+    const max = Number(c.max_score) || 10;
+    const raw = Number(values[c.id]) || 0;
+    const clamped = Math.min(Math.max(raw, 0), max);
+    return sum + (clamped / max) * (Number(c.weight) || 0);
+  }, 0);
+
+  return (weighted / weightSum) * 100;
+}
+
+/* ── Event Branding ──────────────────────────────────────────────────────── */
+/**
+ * Fetch the admin-configured event name/tagline and apply them to any element
+ * carrying data-event="name" / data-event="tagline", plus the document title.
+ * Falls back silently to whatever markup is already on the page.
+ */
+async function applyEventBranding() {
+  let config;
+  try { config = await apiGet('/api/config'); }
+  catch { return null; }
+
+  const name    = config.event_name;
+  const tagline = config.event_tagline;
+
+  if (name) {
+    for (const el of document.querySelectorAll('[data-event="name"]')) {
+      el.textContent = name;
+    }
+    const suffix = document.title.includes('—')
+      ? document.title.split('—')[0].trim()
+      : '';
+    document.title = suffix ? `${suffix} — ${name}` : name;
+  }
+  if (tagline) {
+    for (const el of document.querySelectorAll('[data-event="tagline"]')) {
+      el.textContent = tagline;
+    }
+  }
+  return config;
 }

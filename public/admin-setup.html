@@ -34,6 +34,67 @@
     }
     .save-bar-note { font-size: 0.825rem; color: var(--text-muted); }
     .admin-nav { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    /* Section blocks */
+    .setup-section { margin-bottom: 40px; }
+    .setup-section-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+      margin-bottom: 6px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .setup-section-head h2 { font-size: 1.3rem; }
+    .setup-section-hint { font-size: 0.85rem; color: var(--text-muted); margin: 10px 0 16px; }
+
+    /* Event branding fields */
+    .event-grid { display: grid; gap: 12px; }
+    @media (min-width: 720px) { .event-grid { grid-template-columns: 1fr 1.4fr; } }
+
+    /* Day header: name + date + delete */
+    .day-section-header { align-items: center; }
+    .day-section-header .day-name-input { flex: 1 1 200px; font-weight: 600; }
+    .day-section-header .day-date-input { flex: 1 1 160px; max-width: 220px; }
+
+    /* Criteria editor rows */
+    .criterion-edit {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+    .criterion-edit-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .criterion-edit-head { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .criterion-edit-head .crit-label { flex: 1 1 220px; min-width: 0; font-weight: 600; }
+    .crit-num { display: flex; flex-direction: column; gap: 4px; }
+    .crit-num-label {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--text-dim); font-weight: 700;
+    }
+    .crit-num-field { display: flex; align-items: center; gap: 4px; }
+    .crit-num-field .input { width: 84px; text-align: center; }
+    .crit-suffix { color: var(--text-muted); font-size: 0.875rem; }
+    .criterion-edit-actions { display: flex; gap: 2px; align-items: center; }
+
+    .weight-summary {
+      font-size: 0.85rem;
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+    }
+    .weight-summary.ok   { color: var(--accent); background: var(--accent-glow); }
+    .weight-summary.warn { color: var(--text-muted); background: var(--bg-elevated); }
+
+    .empty-hint {
+      text-align: center; padding: 28px;
+      color: var(--text-muted); font-size: 0.9rem;
+      border: 1px dashed var(--border-mid); border-radius: var(--radius);
+      margin-bottom: 14px;
+    }
   </style>
 </head>
 <body>
@@ -76,7 +137,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <div>
             <h1 style="font-size:1.4rem;">Admin Setup</h1>
-            <p class="text-muted text-sm mt-8">Configure teams and judges for each day</p>
+            <p class="text-muted text-sm mt-8">Event details, judging criteria, days, teams and judges</p>
           </div>
           <div class="admin-nav">
             <a href="/admin-dashboard" class="btn btn-secondary">
@@ -90,7 +151,53 @@
     </header>
 
     <div class="container setup-body">
-      <div id="days-container"></div>
+      <!-- ── Event branding ─────────────────────────────────────────────── -->
+      <section class="setup-section">
+        <div class="setup-section-head">
+          <h2>Event</h2>
+        </div>
+        <p class="setup-section-hint">The name and tagline shown on the home page and judge screens.</p>
+        <div class="panel">
+          <div class="event-grid">
+            <div class="form-group" style="margin:0;">
+              <label class="label" for="event-name">Event name</label>
+              <input type="text" id="event-name" class="input" placeholder="e.g. Datathon 2025"
+                     maxlength="80" aria-label="Event name">
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="label" for="event-tagline">Tagline</label>
+              <input type="text" id="event-tagline" class="input"
+                     placeholder="e.g. Judging portal — score teams and track live results"
+                     maxlength="160" aria-label="Event tagline">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Judging criteria ───────────────────────────────────────────── -->
+      <section class="setup-section">
+        <div class="setup-section-head">
+          <h2>Judging Criteria</h2>
+          <button class="btn btn-secondary btn-sm" id="add-criterion-btn" type="button">+ Add Criterion</button>
+        </div>
+        <p class="setup-section-hint">
+          Add as many criteria as you need. <strong>Weight</strong> sets how much each one counts toward
+          the 0–100 total; <strong>max rating</strong> is the top of that criterion's slider.
+        </p>
+        <div id="criteria-list"></div>
+        <p class="weight-summary warn" id="weight-summary" role="status"></p>
+      </section>
+
+      <!-- ── Days, teams and judges ─────────────────────────────────────── -->
+      <section class="setup-section">
+        <div class="setup-section-head">
+          <h2>Days</h2>
+          <button class="btn btn-secondary btn-sm" id="add-day-btn" type="button">+ Add Day</button>
+        </div>
+        <p class="setup-section-hint">Each day has its own teams and judges. Judges sign in against the day they're assigned to.</p>
+        <div id="days-empty" class="empty-hint hidden">No days yet — add one to start configuring teams and judges.</div>
+        <div id="days-container"></div>
+      </section>
     </div>
   </div>
 

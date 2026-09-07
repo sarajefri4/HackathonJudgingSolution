@@ -28,8 +28,8 @@
       </svg>
     </div>
 
-    <h1>Datathon <span>2025</span></h1>
-    <p class="landing-sub">Judging portal — score teams and track live results</p>
+    <h1 data-event="name">Datathon 2025</h1>
+    <p class="landing-sub" data-event="tagline">Judging portal — score teams and track live results</p>
 
     <div class="entry-cards" role="navigation" aria-label="Entry points">
       <a href="/judge-login" class="entry-card" aria-label="Judge login">
@@ -46,5 +46,8 @@
   </main>
 
   <div id="toast-container" role="region" aria-live="polite" aria-label="Notifications"></div>
+
+  <script src="/js/utils.js"></script>
+  <script>applyEventBranding();</script>
 </body>
 </html>

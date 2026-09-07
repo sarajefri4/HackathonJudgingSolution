@@ -8,7 +8,8 @@ router.post('/admin', (req, res) => {
   const { pin } = req.body;
   if (!pin) return res.status(400).json({ error: 'PIN required' });
 
-  if (String(pin) !== String(process.env.ADMIN_PIN)) {
+  // Falls back to 2021 when no ADMIN_PIN is set in .env.
+  if (String(pin) !== String(process.env.ADMIN_PIN || '2021')) {
     return res.status(401).json({ error: 'Invalid PIN' });
   }
 
