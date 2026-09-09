@@ -472,3 +472,97 @@ function escHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+/* ── Danger Zone: reset all scores ────────────────────────────────────────
+   Two independent confirmations stand between a click and data loss: the admin
+   must type RESET, and then confirm again on a second dialog that spells out
+   exactly what is about to go. The server refuses the call without the phrase
+   too, so neither gate can be skipped by a stray click or a replayed request. */
+let resetPreview = null;
+
+document.getElementById('reset-scores-btn')?.addEventListener('click', openResetModal);
+document.getElementById('reset-cancel')?.addEventListener('click', closeResetModals);
+document.getElementById('reset-back')?.addEventListener('click', () => {
+  document.getElementById('reset-final-modal').classList.add('hidden');
+  document.getElementById('reset-modal').classList.remove('hidden');
+});
+document.getElementById('reset-continue')?.addEventListener('click', showFinalConfirm);
+document.getElementById('reset-execute')?.addEventListener('click', executeReset);
+
+document.getElementById('reset-confirm')?.addEventListener('input', e => {
+  // Exact match only — no trimming, no case-folding. Typing it should feel
+  // deliberate.
+  document.getElementById('reset-continue').disabled = e.target.value !== 'RESET';
+});
+
+async function openResetModal() {
+  const modal = document.getElementById('reset-modal');
+  const input = document.getElementById('reset-confirm');
+  input.value = '';
+  document.getElementById('reset-continue').disabled = true;
+  document.getElementById('reset-error').classList.add('hidden');
+  document.getElementById('include-votes').checked = false;
+  modal.classList.remove('hidden');
+
+  const box = document.getElementById('reset-summary');
+  try {
+    resetPreview = await apiGet('/api/admin/reset-preview');
+    box.innerHTML = `
+      <ul style="list-style:disc;">
+        <li><strong>${resetPreview.scores}</strong> submitted score${resetPreview.scores === 1 ? '' : 's'}
+            from <strong>${resetPreview.judgesScored}</strong> judge${resetPreview.judgesScored === 1 ? '' : 's'}
+            across <strong>${resetPreview.teamsScored}</strong> team${resetPreview.teamsScored === 1 ? '' : 's'}</li>
+        <li><strong>${resetPreview.scoreValues}</strong> individual criterion rating${resetPreview.scoreValues === 1 ? '' : 's'}</li>
+      </ul>`;
+    // Only offer to clear ballots when there are some.
+    document.getElementById('include-votes-wrap').classList.toggle('hidden', resetPreview.votes === 0);
+    document.querySelector('#include-votes-wrap span').textContent =
+      `Also delete ${resetPreview.votes} audience vote${resetPreview.votes === 1 ? '' : 's'}`;
+    input.focus();
+  } catch (err) {
+    box.innerHTML = `<p class="text-danger text-sm">Couldn't read current totals: ${escHtml(err.message)}</p>`;
+  }
+}
+
+function closeResetModals() {
+  document.getElementById('reset-modal').classList.add('hidden');
+  document.getElementById('reset-final-modal').classList.add('hidden');
+}
+
+function showFinalConfirm() {
+  if (document.getElementById('reset-confirm').value !== 'RESET') return;
+
+  const withVotes = document.getElementById('include-votes').checked;
+  const n = resetPreview?.scores ?? 0;
+  document.getElementById('reset-final-msg').textContent =
+    `You are about to permanently delete ${n} score${n === 1 ? '' : 's'}` +
+    (withVotes && resetPreview?.votes
+      ? ` and ${resetPreview.votes} audience vote${resetPreview.votes === 1 ? '' : 's'}.`
+      : '.');
+
+  document.getElementById('reset-modal').classList.add('hidden');
+  document.getElementById('reset-final-modal').classList.remove('hidden');
+}
+
+async function executeReset() {
+  const btn = document.getElementById('reset-execute');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span> Deleting…';
+
+  try {
+    const r = await apiPost('/api/admin/reset-scores', {
+      confirm: 'RESET',
+      includeVotes: document.getElementById('include-votes').checked,
+    });
+    closeResetModals();
+    showToast(
+      `${r.cleared.scores} score(s)` +
+      (r.cleared.votes ? ` and ${r.cleared.votes} vote(s)` : '') + ' deleted'
+    );
+  } catch (err) {
+    showToast('Reset failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled  = false;
+    btn.textContent = 'Delete everything';
+  }
+}

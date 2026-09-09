@@ -49,6 +49,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/auth',   require('./routes/auth'));
 app.use('/api/admin',  require('./routes/admin'));
 app.use('/api/scores', require('./routes/scores'));
+app.use('/api/finals', require('./routes/finals'));
+app.use('/api/vote',   require('./routes/vote'));
 
 // Public lookups (no auth required)
 
@@ -104,6 +106,8 @@ app.get('/admin-setup',   (_, res) => res.sendFile(path.join(htmlDir, 'admin-set
 app.get('/admin-dashboard', (_, res) => res.sendFile(path.join(htmlDir, 'admin-dashboard.html')));
 app.get('/judge-login',   (_, res) => res.sendFile(path.join(htmlDir, 'judge-login.html')));
 app.get('/score',         (_, res) => res.sendFile(path.join(htmlDir, 'score.html')));
+app.get('/finals-dashboard', (_, res) => res.sendFile(path.join(htmlDir, 'finals-dashboard.html')));
+app.get('/vote',          (_, res) => res.sendFile(path.join(htmlDir, 'vote.html')));
 
 // ── Start (wait for DB init) ─────────────────────────────────────────────────
 db._ready.then(() => {
@@ -112,6 +116,13 @@ db._ready.then(() => {
     console.log(`  ─────────────────────────────────────`);
     console.log(`  Local:     http://localhost:${PORT}`);
     console.log(`  Admin PIN: ${ADMIN_PIN}`);
+    for (const [name, addrs] of Object.entries(require('os').networkInterfaces())) {
+      for (const a of addrs || []) {
+        if (a.family === 'IPv4' && !a.internal) {
+          console.log(`  Network:   http://${a.address}:${PORT}  (${name})`);
+        }
+      }
+    }
     console.log(`\n  → Open in browser or share your LAN IP with judges\n`);
   });
 });

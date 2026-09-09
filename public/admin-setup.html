@@ -28,6 +28,25 @@
 
     /* Section blocks */
     .setup-section { margin-bottom: 40px; }
+    .danger-zone {
+      border: 1px solid var(--danger-dim);
+      border-radius: var(--radius);
+      background: rgba(224, 84, 84, 0.05);
+      padding: 20px;
+    }
+    .danger-zone h2 { color: var(--danger); }
+    .reset-summary {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px; margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .reset-summary li { margin: 4px 0 4px 18px; }
+    .confirm-phrase {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: var(--bg-elevated); color: var(--danger);
+      padding: 2px 7px; border-radius: 4px; font-weight: 700;
+    }
     .setup-section-head {
       display: flex; align-items: baseline; justify-content: space-between;
       gap: 12px; flex-wrap: wrap;
@@ -189,6 +208,70 @@
         <div id="days-empty" class="empty-hint hidden">No days yet — add one to start configuring teams and judges.</div>
         <div id="days-container"></div>
       </section>
+
+      <!-- Danger Zone -->
+      <section class="setup-section">
+        <div class="danger-zone">
+          <div class="setup-section-head">
+            <h2>Danger zone</h2>
+          </div>
+          <p class="setup-section-hint" style="margin-bottom:16px;">
+            Clears every score judges have submitted, across all days. Your days,
+            teams, judges and rubric are all kept — only the results go. There is
+            no undo.
+          </p>
+          <button class="btn btn-danger" id="reset-scores-btn" type="button">
+            Reset all scores
+          </button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Reset confirmation: step 1 of 2 -->
+  <div id="reset-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reset-title">
+    <div class="modal">
+      <h2 id="reset-title" style="color:var(--danger);">Reset all scores?</h2>
+      <p>This permanently deletes:</p>
+      <div class="reset-summary" id="reset-summary">
+        <div class="flex-center"><div class="spinner"></div></div>
+      </div>
+
+      <label class="switch" id="include-votes-wrap"
+             style="display:flex;align-items:center;gap:10px;margin-bottom:18px;cursor:pointer;">
+        <input type="checkbox" id="include-votes" style="width:18px;height:18px;accent-color:var(--danger);">
+        <span class="text-sm">Also delete audience votes</span>
+      </label>
+
+      <div class="form-group">
+        <label class="label" for="reset-confirm">
+          Type <span class="confirm-phrase">RESET</span> to continue
+        </label>
+        <input type="text" id="reset-confirm" class="input" autocomplete="off"
+               spellcheck="false" placeholder="RESET" aria-label="Type RESET to confirm">
+      </div>
+
+      <p id="reset-error" class="text-danger text-sm mb-16 hidden" role="alert"></p>
+
+      <div class="flex gap-8">
+        <button class="btn btn-ghost btn-full" id="reset-cancel" type="button">Cancel</button>
+        <button class="btn btn-danger btn-full" id="reset-continue" type="button" disabled>Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset confirmation: step 2 of 2 -->
+  <div id="reset-final-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reset-final-title">
+    <div class="modal">
+      <h2 id="reset-final-title" style="color:var(--danger);">Last chance</h2>
+      <p id="reset-final-msg"></p>
+      <p class="text-sm text-muted mt-16 mb-24">
+        Judges will have to score every team again from scratch.
+      </p>
+      <div class="flex gap-8">
+        <button class="btn btn-ghost btn-full" id="reset-back" type="button">Go back</button>
+        <button class="btn btn-danger btn-full" id="reset-execute" type="button">Delete everything</button>
+      </div>
     </div>
   </div>
 

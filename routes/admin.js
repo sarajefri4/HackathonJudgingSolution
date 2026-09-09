@@ -2,13 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../db');
 const { loadCriteria, recomputeAllTotals } = require('../scoring');
-
-function requireAdmin(req, res, next) {
-  if (!req.session.isAdmin) {
-    return res.status(401).json({ error: 'Admin access required' });
-  }
-  next();
-}
+const requireAdmin = require('../require-admin');
 
 /* ── GET /api/admin/config ────────────────────────────────────────────────
    Everything the setup page needs: event branding, days, teams, judges and
@@ -256,6 +250,64 @@ router.get('/dashboard/:dayId', requireAdmin, async (req, res) => {
     });
 
     res.json({ day, teams, judges, criteria, scores, teamAverages, totalJudges: judges.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/* ── GET /api/admin/reset-preview — what a reset would destroy ───────────── */
+router.get('/reset-preview', requireAdmin, async (req, res) => {
+  try {
+    const [scores, values, votes, judges, teams] = await Promise.all([
+      db.get('SELECT COUNT(*) AS n FROM scores'),
+      db.get('SELECT COUNT(*) AS n FROM score_values'),
+      db.get('SELECT COUNT(*) AS n FROM votes'),
+      db.get('SELECT COUNT(DISTINCT judge_id) AS n FROM scores'),
+      db.get('SELECT COUNT(DISTINCT team_id) AS n FROM scores'),
+    ]);
+    res.json({
+      scores:       scores.n,
+      scoreValues:  values.n,
+      votes:        votes.n,
+      judgesScored: judges.n,
+      teamsScored:  teams.n,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/* ── POST /api/admin/reset-scores — destructive, double-confirmed ─────────
+   Wipes every submitted score. Teams, judges, days and the rubric all stay;
+   only the judging results (and optionally the audience ballots) go.
+
+   The client asks twice before calling this, and the exact confirmation phrase
+   has to come back in the body — a stray click or a replayed request can't
+   reach it on its own. */
+router.post('/reset-scores', requireAdmin, async (req, res) => {
+  const { confirm, includeVotes } = req.body;
+
+  if (String(confirm) !== 'RESET') {
+    return res.status(400).json({ error: 'Reset not confirmed' });
+  }
+
+  try {
+    let cleared;
+    await db.transaction(async () => {
+      const before = await db.get('SELECT COUNT(*) AS n FROM scores');
+      const votesBefore = await db.get('SELECT COUNT(*) AS n FROM votes');
+
+      // score_values rows go with their parent score (ON DELETE CASCADE).
+      await db.run('DELETE FROM scores');
+      if (includeVotes) await db.run('DELETE FROM votes');
+
+      cleared = { scores: before.n, votes: includeVotes ? votesBefore.n : 0 };
+    });
+
+    console.warn(`[admin] scores reset — ${cleared.scores} scores, ${cleared.votes} votes deleted`);
+    res.json({ success: true, cleared });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

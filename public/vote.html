@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>People's Choice — Vote</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .vote-page {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      max-width: 560px; margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+    .vote-mark { display: flex; justify-content: center; margin-bottom: 20px; }
+    .vote-title { font-size: 1.65rem; text-align: center; margin-bottom: 6px; }
+    .vote-sub   { text-align: center; margin-bottom: 26px; }
+
+    .team-choices { display: flex; flex-direction: column; gap: 12px; }
+    .team-choice {
+      display: flex; align-items: center; gap: 14px;
+      width: 100%; text-align: left;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 18px;
+      color: var(--text);
+      font-family: inherit; font-size: 1.05rem; font-weight: 600;
+      cursor: pointer;
+      min-height: 68px;                 /* comfortable thumb target */
+      transition: border-color .15s, background .15s, transform .08s;
+    }
+    .team-choice:active { transform: scale(0.985); }
+    .team-choice:hover  { border-color: var(--border-mid); background: var(--bg-elevated); }
+    .team-choice.selected {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+      box-shadow: var(--shadow-glow);
+    }
+    .team-choice:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .choice-dot {
+      flex: 0 0 24px; height: 24px; border-radius: 50%;
+      border: 2px solid var(--border-mid);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .team-choice.selected .choice-dot { border-color: var(--accent); }
+    .team-choice.selected .choice-dot::after {
+      content: ''; width: 12px; height: 12px; border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .vote-actions { margin-top: 24px; }
+
+    /* Sticky submit so the button is reachable on a long finalist list */
+    .submit-wrap {
+      position: sticky; bottom: 0;
+      padding: 16px 0 4px;
+      background: linear-gradient(to top, var(--bg) 62%, transparent);
+    }
+
+    .result-card { text-align: center; padding: 36px 24px; }
+    .result-icon { font-size: 3rem; line-height: 1; margin-bottom: 14px; }
+    .result-team {
+      font-size: 1.5rem; font-weight: 700; color: var(--accent);
+      margin: 10px 0 6px;
+    }
+    .state { display: none; }
+    .state.active { display: block; }
+  </style>
+</head>
+<body>
+  <main class="vote-page" role="main">
+    <div class="vote-mark" aria-hidden="true">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+        <circle cx="22" cy="22" r="22" fill="rgba(61,207,160,0.1)"/>
+        <path d="M22 10L34 30H10L22 10Z" stroke="#3dcfa0" stroke-width="2" stroke-linejoin="round" fill="rgba(61,207,160,0.15)"/>
+      </svg>
+    </div>
+
+    <!-- Loading -->
+    <div class="state active" id="state-loading">
+      <div class="flex-center" style="padding:40px 0;">
+        <div class="spinner" aria-label="Loading"></div>
+      </div>
+    </div>
+
+    <!-- Voting is not available -->
+    <div class="state" id="state-closed">
+      <div class="card result-card">
+        <div class="result-icon" aria-hidden="true">🗳️</div>
+        <h1 class="vote-title" id="closed-title">Voting isn't open yet</h1>
+        <p class="text-muted" id="closed-msg">
+          Hang tight — the People's Choice vote opens once the finalists have presented.
+        </p>
+        <button class="btn btn-secondary mt-24" id="closed-retry" type="button">Check again</button>
+      </div>
+    </div>
+
+    <!-- Pick a team -->
+    <div class="state" id="state-vote">
+      <h1 class="vote-title">People's Choice</h1>
+      <p class="vote-sub text-muted" id="vote-sub">Which team impressed you most?</p>
+
+      <div class="team-choices" id="team-choices" role="radiogroup" aria-label="Finalist teams"></div>
+      <p id="vote-error" class="text-danger text-sm mt-16 hidden" role="alert"></p>
+
+      <div class="submit-wrap">
+        <button class="btn btn-primary btn-full btn-lg" id="vote-submit" type="button" disabled>
+          Select a team
+        </button>
+        <p class="text-xs text-muted text-center mt-8">You can vote once.</p>
+      </div>
+    </div>
+
+    <!-- Done -->
+    <div class="state" id="state-done">
+      <div class="card result-card">
+        <div class="result-icon" aria-hidden="true">✅</div>
+        <h1 class="vote-title">Thanks for voting!</h1>
+        <p class="text-muted">Your vote went to</p>
+        <div class="result-team" id="done-team"></div>
+        <p class="text-sm text-muted mt-16">
+          Results will be announced from the stage.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <div id="toast-container" role="region" aria-live="polite"></div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/vote.js"></script>
+</body>
+</html>

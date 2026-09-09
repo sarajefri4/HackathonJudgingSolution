@@ -157,6 +157,46 @@ async function initSchema() {
       position    INTEGER NOT NULL DEFAULT 0
     );
 
+    /* ── People's Choice ──────────────────────────────────────────────────
+       After judging closes, the top-scoring teams of a day present again and
+       the audience votes for a favourite from their phones. */
+
+    /* The finalists for a day. Empty means "use the automatic top N by judging
+       score"; rows here are an explicit override the admin has chosen. */
+    CREATE TABLE IF NOT EXISTS finalists (
+      day_id   INTEGER NOT NULL,
+      team_id  INTEGER NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (day_id, team_id),
+      FOREIGN KEY (day_id)  REFERENCES days(id)  ON DELETE CASCADE,
+      FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+    );
+
+    /* One audience vote. voter_id is a cookie set on first visit; device_id is
+       kept in the phone's local storage. A vote is refused if either already
+       appears for the day, so clearing cookies alone doesn't buy a second vote. */
+    CREATE TABLE IF NOT EXISTS votes (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      day_id    INTEGER NOT NULL,
+      team_id   INTEGER NOT NULL,
+      voter_id  TEXT    NOT NULL,
+      device_id TEXT,
+      cast_at   DATETIME DEFAULT (datetime('now')),
+      FOREIGN KEY (day_id)  REFERENCES days(id)  ON DELETE CASCADE,
+      FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS votes_by_voter
+      ON votes (day_id, voter_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS votes_by_device
+      ON votes (day_id, device_id) WHERE device_id IS NOT NULL;
+
+    /* Whether the audience vote is currently accepting ballots, per day. */
+    CREATE TABLE IF NOT EXISTS vote_state (
+      day_id  INTEGER PRIMARY KEY,
+      is_open INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY (day_id) REFERENCES days(id) ON DELETE CASCADE
+    );
+
     /* One row per (score, criterion). Replaces the fixed score columns. */
     CREATE TABLE IF NOT EXISTS score_values (
       score_id     INTEGER NOT NULL,
@@ -183,6 +223,17 @@ async function initSchema() {
 const DEFAULT_CONFIG = {
   event_name:    'Datathon 2025',
   event_tagline: 'Judging portal — score teams and track live results',
+
+  // People's Choice. The two weights are relative and normalised by their sum,
+  // so 70/30 and 7/3 behave identically.
+  weight_judges:   '70',
+  weight_audience: '30',
+  finalist_count:  '6',
+
+  // Master switch for the whole audience-voting feature. '0' hides it from the
+  // admin dashboards and turns the public vote page away, whatever any
+  // individual day's open/closed state says.
+  voting_enabled:  '1',
 };
 
 async function seedConfig() {

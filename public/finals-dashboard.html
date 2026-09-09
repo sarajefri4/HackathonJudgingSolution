@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>People's Choice — Dashboard</title>
+  <link rel="stylesheet" href="/css/main.css">
+  <style>
+    .dash-header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0 0;
+    }
+    .dash-body { padding: 28px 0 60px; }
+    .head-row {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    }
+    .admin-nav { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+    .finals-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(300px, 1fr);
+      gap: 20px; align-items: start;
+    }
+    @media (max-width: 900px) { .finals-grid { grid-template-columns: 1fr; } }
+
+    /* ── Vote control ─────────────────────────────────────────────────── */
+    .vote-status {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 600; font-size: 1.05rem;
+    }
+    .status-lamp {
+      width: 11px; height: 11px; border-radius: 50%;
+      background: var(--text-dim); flex: none;
+    }
+    .status-lamp.live {
+      background: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+      animation: lamp-pulse 2s ease-in-out infinite;
+    }
+    @keyframes lamp-pulse { 50% { box-shadow: 0 0 0 8px transparent; } }
+
+    /* ── QR ───────────────────────────────────────────────────────────── */
+    .qr-frame {
+      background: #fff; border-radius: var(--radius);
+      padding: 14px; width: 100%; max-width: 260px;
+      margin: 0 auto 14px; line-height: 0;
+    }
+    .qr-frame svg { width: 100%; height: auto; display: block; }
+    .vote-link {
+      display: block; word-break: break-all;
+      font-size: 0.82rem; color: var(--accent);
+      text-align: center; margin-bottom: 10px;
+    }
+
+    /* ── Finalist picker ──────────────────────────────────────────────── */
+    .pick-list { display: flex; flex-direction: column; gap: 8px; }
+    .pick-row {
+      display: grid; grid-template-columns: auto 1fr auto auto;
+      align-items: center; gap: 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 11px 14px;
+    }
+    .pick-row.picked { border-color: var(--accent); background: var(--accent-glow); }
+    .pick-row input[type="checkbox"] { width: 19px; height: 19px; accent-color: var(--accent); cursor: pointer; }
+    .pick-name { font-weight: 600; }
+    .pick-score { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 0.9rem; }
+    .pick-rank {
+      font-size: 0.72rem; color: var(--text-dim);
+      min-width: 26px; text-align: right; font-variant-numeric: tabular-nums;
+    }
+
+    /* ── Tally bars ───────────────────────────────────────────────────── */
+    .tally-row { margin-bottom: 14px; }
+    .tally-head {
+      display: flex; justify-content: space-between;
+      align-items: baseline; gap: 10px; margin-bottom: 6px;
+    }
+    .tally-name  { font-weight: 600; }
+    .tally-count { font-variant-numeric: tabular-nums; color: var(--text-muted); font-size: 0.88rem; }
+    .tally-track {
+      height: 10px; background: var(--bg-elevated);
+      border-radius: 5px; overflow: hidden;
+    }
+    .tally-fill {
+      height: 100%; background: var(--accent);
+      border-radius: 5px; transition: width .4s ease;
+    }
+    .tally-row.leader .tally-fill { box-shadow: 0 0 12px var(--accent-glow-strong); }
+
+    .weight-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .weight-row .input { width: 84px; }
+    .num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+    .rank-cell { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+    .final-cell { font-weight: 700; color: var(--accent); }
+
+    .toggle-line {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+    }
+    .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+    .switch input { width: 19px; height: 19px; accent-color: var(--accent); cursor: pointer; }
+  </style>
+</head>
+<body>
+  <!-- Admin gate -->
+  <div id="pin-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="finals-modal-title">
+    <div class="modal">
+      <h2 id="finals-modal-title">Admin Access</h2>
+      <p>Enter the master PIN to open the People's Choice dashboard</p>
+      <form id="pin-form" novalidate>
+        <div class="form-group" style="display:flex;justify-content:center;margin-bottom:20px;">
+          <input type="password" inputmode="numeric" id="admin-pin" class="input input-pin"
+                 placeholder="••••" maxlength="10" autocomplete="current-password" aria-label="Admin PIN">
+        </div>
+        <p id="pin-error" class="text-danger text-sm mb-16 hidden" role="alert"></p>
+        <button type="submit" class="btn btn-primary btn-full btn-lg">Unlock</button>
+        <div class="mt-16"><a href="/" class="text-muted text-sm">← Back to home</a></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="dash-ui" class="hidden">
+    <header class="dash-header">
+      <div class="container">
+        <div class="head-row">
+          <div>
+            <h1 class="page-title">People's Choice</h1>
+            <div class="refresh-bar mt-8">
+              <div class="refresh-dot" id="refresh-dot"></div>
+              <span id="refresh-text">Loading…</span>
+            </div>
+          </div>
+          <div class="admin-nav">
+            <button class="btn btn-ghost btn-sm" id="refresh-btn" type="button">↻ Refresh</button>
+            <button class="btn btn-secondary btn-sm" id="export-btn" type="button">Export CSV</button>
+            <a href="/admin-dashboard" class="btn btn-ghost btn-sm">Judging</a>
+            <a href="/admin-setup" class="btn btn-ghost btn-sm">Setup</a>
+            <a href="/" class="btn btn-ghost btn-sm">← Home</a>
+          </div>
+        </div>
+        <div class="tab-bar mt-16" id="day-tabs" role="tablist" aria-label="Select day"></div>
+      </div>
+    </header>
+
+    <div class="container dash-body">
+      <!-- Master switch -->
+      <div class="card mb-24">
+        <div class="toggle-line">
+          <div>
+            <label class="switch">
+              <input type="checkbox" id="enabled-toggle">
+              <span class="fw-600">Audience voting enabled</span>
+            </label>
+            <p class="text-sm text-muted mt-8" id="enabled-note">
+              Turning this off hides the round and closes every day's ballot.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div id="disabled-banner" class="card mb-24 hidden">
+        <p class="text-muted">
+          Audience voting is switched off. The vote page turns phones away and no
+          new ballots can be cast. Existing votes are kept.
+        </p>
+      </div>
+
+      <div id="finals-body">
+        <div class="finals-grid mb-24">
+          <!-- Finalists -->
+          <div class="card">
+            <div class="section-header mb-16">
+              <h2 class="section-title">Finalists</h2>
+              <span class="badge badge-muted" id="finalist-source">automatic</span>
+            </div>
+            <p class="text-sm text-muted mb-16" id="finalist-help"></p>
+            <div class="pick-list" id="pick-list"></div>
+            <div class="flex gap-8 mt-16" style="flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" id="save-finalists" type="button">Save finalists</button>
+              <button class="btn btn-ghost btn-sm" id="auto-finalists" type="button">Use top scorers</button>
+            </div>
+            <p class="text-xs text-muted mt-12" id="pick-count"></p>
+          </div>
+
+          <!-- Vote control + QR -->
+          <div class="card">
+            <div class="section-header mb-16">
+              <h2 class="section-title">The vote</h2>
+            </div>
+            <div class="vote-status mb-16">
+              <span class="status-lamp" id="status-lamp"></span>
+              <span id="status-text">Closed</span>
+            </div>
+            <button class="btn btn-primary btn-full mb-16" id="toggle-vote" type="button">Open voting</button>
+
+            <div id="qr-block">
+              <div class="qr-frame" id="qr-frame"></div>
+              <a class="vote-link" id="vote-link" target="_blank" rel="noopener"></a>
+              <div class="form-group">
+                <label class="label" for="url-select">Phones should reach the server at</label>
+                <select class="input" id="url-select"></select>
+              </div>
+              <p class="text-xs text-muted">
+                Pick the address on the same WiFi as the audience. Point a phone
+                at the QR before you go on stage.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live tally -->
+        <div class="section-header mb-16">
+          <h2 class="section-title">Live votes</h2>
+          <span class="badge badge-accent" id="votes-badge">0 ballots</span>
+        </div>
+        <div class="card mb-24" id="tally-box"></div>
+
+        <hr class="divider">
+
+        <!-- Combined standings -->
+        <div class="section-header mb-16">
+          <h2 class="section-title">Final standings</h2>
+          <span class="text-sm text-muted" id="weights-legend"></span>
+        </div>
+
+        <div class="card mb-16">
+          <div class="weight-row">
+            <label class="label" for="w-judges" style="margin:0;">Judges</label>
+            <input type="number" class="input" id="w-judges" min="0" step="5" aria-label="Judging weight">
+            <span class="text-muted">%</span>
+            <label class="label" for="w-audience" style="margin:0;margin-left:8px;">Audience</label>
+            <input type="number" class="input" id="w-audience" min="0" step="5" aria-label="Audience weight">
+            <span class="text-muted">%</span>
+            <button class="btn btn-secondary btn-sm" id="save-weights" type="button">Save</button>
+            <span class="text-sm text-muted" id="weight-note"></span>
+          </div>
+        </div>
+
+        <div class="table-wrap mb-24">
+          <table class="score-table" id="standings-table" aria-label="Final standings"></table>
+        </div>
+
+        <div class="flex gap-8" style="flex-wrap:wrap;">
+          <button class="btn btn-danger btn-sm" id="clear-votes" type="button">Clear ballots for this day</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" role="region" aria-live="polite"></div>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/finals-dashboard.js"></script>
+</body>
+</html>
